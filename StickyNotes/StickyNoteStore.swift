@@ -5,6 +5,8 @@ import Darwin
 final class StickyNoteStore: ObservableObject {
     @Published private(set) var notes: [UUID: StickyNote] = [:]
     @Published private(set) var autoSaveEnabled: Bool
+    /// 変更あり・未保存の付箋ID(手動保存待ち、または自動保存デバウンス待ち)。
+    @Published private(set) var dirtyNoteIDs: Set<UUID> = []
 
     private let fileManager = FileManager.default
     private let ioQueue = DispatchQueue(label: "com.example.StickyNotes.file-io", qos: .utility)
@@ -14,7 +16,6 @@ final class StickyNoteStore: ObservableObject {
     private var directoryDescriptor: Int32 = -1
     private var pendingReload: DispatchWorkItem?
     private var pendingSaves: [UUID: DispatchWorkItem] = [:]
-    private var dirtyNoteIDs: Set<UUID> = []
     private var started = false
 
     private static let autoSaveDefaultsKey = "autoSaveEnabled"

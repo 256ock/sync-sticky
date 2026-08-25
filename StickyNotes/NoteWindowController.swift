@@ -4,7 +4,8 @@ import SwiftUI
 
 final class NoteWindowController: NSObject, NSWindowDelegate {
     private let store: StickyNoteStore
-    private var subscription: AnyCancellable?
+    private var notesSubscription: AnyCancellable?
+    private var dirtySubscription: AnyCancellable?
     private var windows: [UUID: NSWindow] = [:]
     private var models: [UUID: NoteEditorModel] = [:]
     private var applyingStoreUpdate = false
@@ -13,11 +14,22 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
     init(store: StickyNoteStore) {
         self.store = store
         super.init()
-        subscription = store.$notes
+        notesSubscription = store.$notes
             .receive(on: DispatchQueue.main)
             .sink { [weak self] notes in
                 self?.reconcile(with: notes)
             }
+        dirtySubscription = store.$dirtyNoteIDs
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] dirtyIDs in
+                self?.updateDocumentEditedState(dirtyIDs: dirtyIDs)
+            }
+    }
+
+    private func updateDocumentEditedState(dirtyIDs: Set<UUID>) {
+        for (id, window) in windows {
+            window.isDocumentEdited = dirtyIDs.contains(id)
+        }
     }
 
     func showNewNote() {
@@ -115,6 +127,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 
         windows[note.id] = window
         models[note.id] = model
+        window.isDocumentEdited = store.dirtyNoteIDs.contains(note.id)
     }
 
     func windowShouldClose(_ window: NSWindow) -> Bool {
