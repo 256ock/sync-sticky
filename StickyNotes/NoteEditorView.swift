@@ -15,9 +15,14 @@ struct NoteEditorView: View {
     let onColorChanged: (NoteColor) -> Void
     let onVariantChanged: (Bool) -> Void
     let onDelete: () -> Void
+    let onSave: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
+            Button("Save", action: onSave)
+                .keyboardShortcut("s", modifiers: .command)
+                .hidden()
+                .frame(width: 0, height: 0)
             HStack {
                 ZStack(alignment: .leading) {
                     if model.note.title.isEmpty {

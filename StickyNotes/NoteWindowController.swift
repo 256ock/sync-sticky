@@ -43,6 +43,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         for (id, window) in windows {
             store.updateFrame(for: id, frame: window.frame)
         }
+        store.flushAllPendingSaves()
     }
 
     private func reconcile(with notes: [UUID: StickyNote]) {
@@ -91,6 +92,9 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             },
             onDelete: { [weak self] in
                 self?.store.deleteNote(id: note.id)
+            },
+            onSave: { [weak self] in
+                self?.store.saveNow(id: note.id)
             }
         )
 

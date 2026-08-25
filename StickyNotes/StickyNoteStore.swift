@@ -4,6 +4,7 @@ import Darwin
 
 final class StickyNoteStore: ObservableObject {
     @Published private(set) var notes: [UUID: StickyNote] = [:]
+    @Published private(set) var autoSaveEnabled: Bool
 
     private let fileManager = FileManager.default
     private let ioQueue = DispatchQueue(label: "com.example.StickyNotes.file-io", qos: .utility)
@@ -12,7 +13,12 @@ final class StickyNoteStore: ObservableObject {
     private var directorySource: DispatchSourceFileSystemObject?
     private var directoryDescriptor: Int32 = -1
     private var pendingReload: DispatchWorkItem?
+    private var pendingSaves: [UUID: DispatchWorkItem] = [:]
+    private var dirtyNoteIDs: Set<UUID> = []
     private var started = false
+
+    private static let autoSaveDefaultsKey = "autoSaveEnabled"
+    private static let autoSaveDelay: TimeInterval = 1.0
 
     init(directoryURL: URL? = nil, localFrameStore: LocalFrameStore = LocalFrameStore()) {
         syncDirectoryURL = directoryURL ?? fileManager.homeDirectoryForCurrentUser
@@ -21,6 +27,13 @@ final class StickyNoteStore: ObservableObject {
             .appendingPathComponent("com~apple~CloudDocs", isDirectory: true)
             .appendingPathComponent("StickyNotes", isDirectory: true)
         self.localFrameStore = localFrameStore
+        autoSaveEnabled = UserDefaults.standard.object(forKey: Self.autoSaveDefaultsKey) as? Bool ?? true
+    }
+
+    func setAutoSaveEnabled(_ enabled: Bool) {
+        guard autoSaveEnabled != enabled else { return }
+        autoSaveEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: Self.autoSaveDefaultsKey)
     }
 
     var directoryURL: URL { syncDirectoryURL }
@@ -63,7 +76,8 @@ final class StickyNoteStore: ObservableObject {
         note.title = title
         note.updatedAt = Date()
         notes[id] = note
-        persist(note)
+        dirtyNoteIDs.insert(id)
+        scheduleAutoSave(for: id)
     }
 
     func updateText(for id: UUID, text: String) {
@@ -71,7 +85,8 @@ final class StickyNoteStore: ObservableObject {
         note.text = text
         note.updatedAt = Date()
         notes[id] = note
-        persist(note)
+        dirtyNoteIDs.insert(id)
+        scheduleAutoSave(for: id)
     }
 
     func updateColor(for id: UUID, color: NoteColor) {
@@ -79,7 +94,8 @@ final class StickyNoteStore: ObservableObject {
         note.colorName = color
         note.updatedAt = Date()
         notes[id] = note
-        persist(note)
+        dirtyNoteIDs.insert(id)
+        scheduleAutoSave(for: id)
     }
 
     func updateVariant(for id: UUID, isDarkVariant: Bool) {
@@ -87,6 +103,38 @@ final class StickyNoteStore: ObservableObject {
         note.isDarkVariant = isDarkVariant
         note.updatedAt = Date()
         notes[id] = note
+        dirtyNoteIDs.insert(id)
+        scheduleAutoSave(for: id)
+    }
+
+    /// 保留中のデバウンス保存があれば取消し、即座にディスクへ書き込む(Cmd+S / ウィンドウを閉じる時など)。
+    func saveNow(id: UUID) {
+        pendingSaves[id]?.cancel()
+        flushSave(for: id)
+    }
+
+    /// 全付箋の保留中の保存を即座に反映する(アプリ終了時など)。
+    func flushAllPendingSaves() {
+        for id in Array(pendingSaves.keys) {
+            pendingSaves[id]?.cancel()
+            flushSave(for: id)
+        }
+    }
+
+    private func scheduleAutoSave(for id: UUID) {
+        pendingSaves[id]?.cancel()
+        guard autoSaveEnabled else { return }
+        let work = DispatchWorkItem { [weak self] in
+            self?.flushSave(for: id)
+        }
+        pendingSaves[id] = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.autoSaveDelay, execute: work)
+    }
+
+    private func flushSave(for id: UUID) {
+        pendingSaves.removeValue(forKey: id)
+        dirtyNoteIDs.remove(id)
+        guard let note = notes[id] else { return }
         persist(note)
     }
 
@@ -100,6 +148,9 @@ final class StickyNoteStore: ObservableObject {
 
     func deleteNote(id: UUID) {
         guard notes.removeValue(forKey: id) != nil else { return }
+        pendingSaves[id]?.cancel()
+        pendingSaves.removeValue(forKey: id)
+        dirtyNoteIDs.remove(id)
         localFrameStore.removeFrame(for: id)
         let url = noteURL(for: id)
         ioQueue.async { [fileManager] in
@@ -180,7 +231,15 @@ final class StickyNoteStore: ObservableObject {
         let loadedNotes = readAllNotes()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.notes = Dictionary(uniqueKeysWithValues: loadedNotes.map { ($0.id, $0) })
+            var merged = Dictionary(uniqueKeysWithValues: loadedNotes.map { ($0.id, $0) })
+            // 未保存(デバウンス待ち/手動保存待ち)の付箋は、ディスクの内容で上書きせず
+            // メモリ上の最新内容を保持する(他Macの変更検知による全件再読込との競合を防ぐ)。
+            for id in dirtyNoteIDs {
+                if let currentNote = self.notes[id] {
+                    merged[id] = currentNote
+                }
+            }
+            self.notes = merged
         }
     }
 
