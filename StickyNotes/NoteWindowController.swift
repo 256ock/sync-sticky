@@ -80,6 +80,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
                 if window.frame != note.frame {
                     window.setFrame(note.frame, display: true)
                 }
+                window.level = note.isPinned ? .floating : .normal
             } else {
                 createWindow(for: note)
             }
@@ -102,6 +103,9 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             onVariantChanged: { [weak self] isDarkVariant in
                 self?.store.updateVariant(for: note.id, isDarkVariant: isDarkVariant)
             },
+            onPinnedChanged: { [weak self] isPinned in
+                self?.store.updatePinned(for: note.id, isPinned: isPinned)
+            },
             onDelete: { [weak self] in
                 self?.store.deleteNote(id: note.id)
             },
@@ -119,7 +123,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         window.title = "Sticky Note"
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.level = .floating
+        window.level = note.isPinned ? .floating : .normal
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.contentView = NSHostingView(rootView: view)
         window.minSize = CGSize(width: 220, height: 160)

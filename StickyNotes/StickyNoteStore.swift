@@ -108,6 +108,15 @@ final class StickyNoteStore: ObservableObject {
         scheduleAutoSave(for: id)
     }
 
+    func updatePinned(for id: UUID, isPinned: Bool) {
+        guard var note = notes[id], note.isPinned != isPinned else { return }
+        note.isPinned = isPinned
+        note.updatedAt = Date()
+        notes[id] = note
+        dirtyNoteIDs.insert(id)
+        scheduleAutoSave(for: id)
+    }
+
     /// 保留中のデバウンス保存があれば取消し、即座にディスクへ書き込む(Cmd+S / ウィンドウを閉じる時など)。
     func saveNow(id: UUID) {
         pendingSaves[id]?.cancel()

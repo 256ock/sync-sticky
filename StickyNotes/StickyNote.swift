@@ -21,6 +21,7 @@ struct StickyNote: Codable, Equatable, Identifiable {
     var text: String
     var colorName: NoteColor
     var isDarkVariant: Bool
+    var isPinned: Bool
     var x: Double
     var y: Double
     var width: Double
@@ -35,6 +36,7 @@ struct StickyNote: Codable, Equatable, Identifiable {
         text: String = "",
         colorName: NoteColor = .yellow,
         isDarkVariant: Bool = false,
+        isPinned: Bool = true,
         frame: CGRect = CGRect(origin: .zero, size: StickyNote.defaultSize),
         updatedAt: Date = Date()
     ) {
@@ -43,6 +45,7 @@ struct StickyNote: Codable, Equatable, Identifiable {
         self.text = text
         self.colorName = colorName
         self.isDarkVariant = isDarkVariant
+        self.isPinned = isPinned
         self.x = frame.origin.x
         self.y = frame.origin.y
         self.width = frame.width
@@ -61,7 +64,7 @@ struct StickyNote: Codable, Equatable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, text, colorName, isDarkVariant, x, y, width, height, updatedAt
+        case id, title, text, colorName, isDarkVariant, isPinned, x, y, width, height, updatedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -71,6 +74,9 @@ struct StickyNote: Codable, Equatable, Identifiable {
         text = try container.decode(String.self, forKey: .text)
         colorName = try container.decode(NoteColor.self, forKey: .colorName)
         isDarkVariant = try container.decodeIfPresent(Bool.self, forKey: .isDarkVariant) ?? false
+        // 旧形式ファイルには無い項目。これまで全付箋が常に最前面固定だったため、
+        // 後方互換としてデフォルトはtrue(最前面)にする。
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? true
         // ウィンドウ位置/サイズはMacごとのローカル情報。同期ファイルには含めない。
         // 旧形式ファイルに残っていれば初回移行のシード値として読み込む。
         let legacyFrame = CGRect(
@@ -93,6 +99,7 @@ struct StickyNote: Codable, Equatable, Identifiable {
         try container.encode(text, forKey: .text)
         try container.encode(colorName, forKey: .colorName)
         try container.encode(isDarkVariant, forKey: .isDarkVariant)
+        try container.encode(isPinned, forKey: .isPinned)
         try container.encode(updatedAt, forKey: .updatedAt)
     }
 }

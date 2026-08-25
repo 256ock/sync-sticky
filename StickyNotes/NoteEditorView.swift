@@ -14,6 +14,7 @@ struct NoteEditorView: View {
     let onTextChanged: (String) -> Void
     let onColorChanged: (NoteColor) -> Void
     let onVariantChanged: (Bool) -> Void
+    let onPinnedChanged: (Bool) -> Void
     let onDelete: () -> Void
     let onSave: () -> Void
 
@@ -41,6 +42,12 @@ struct NoteEditorView: View {
                 .buttonStyle(.borderless)
                 .foregroundColor(textColor)
                 .help("背景/文字色を反転")
+                Button(action: { onPinnedChanged(!model.note.isPinned) }) {
+                    Image(systemName: model.note.isPinned ? "pin.fill" : "pin")
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(textColor)
+                .help(model.note.isPinned ? "最前面表示を解除" : "常に最前面に表示")
                 HStack(spacing: 6) {
                     ForEach(NoteColor.allCases) { color in
                         Circle()
