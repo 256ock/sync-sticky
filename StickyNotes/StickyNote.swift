@@ -60,6 +60,10 @@ struct StickyNote: Codable, Equatable, Identifiable {
         }
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, title, text, colorName, isDarkVariant, x, y, width, height, updatedAt
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -67,10 +71,28 @@ struct StickyNote: Codable, Equatable, Identifiable {
         text = try container.decode(String.self, forKey: .text)
         colorName = try container.decode(NoteColor.self, forKey: .colorName)
         isDarkVariant = try container.decodeIfPresent(Bool.self, forKey: .isDarkVariant) ?? false
-        x = try container.decode(Double.self, forKey: .x)
-        y = try container.decode(Double.self, forKey: .y)
-        width = try container.decode(Double.self, forKey: .width)
-        height = try container.decode(Double.self, forKey: .height)
+        // ウィンドウ位置/サイズはMacごとのローカル情報。同期ファイルには含めない。
+        // 旧形式ファイルに残っていれば初回移行のシード値として読み込む。
+        let legacyFrame = CGRect(
+            x: try container.decodeIfPresent(Double.self, forKey: .x) ?? 0,
+            y: try container.decodeIfPresent(Double.self, forKey: .y) ?? 0,
+            width: try container.decodeIfPresent(Double.self, forKey: .width) ?? StickyNote.defaultSize.width,
+            height: try container.decodeIfPresent(Double.self, forKey: .height) ?? StickyNote.defaultSize.height
+        )
+        x = legacyFrame.origin.x
+        y = legacyFrame.origin.y
+        width = legacyFrame.width
+        height = legacyFrame.height
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(text, forKey: .text)
+        try container.encode(colorName, forKey: .colorName)
+        try container.encode(isDarkVariant, forKey: .isDarkVariant)
+        try container.encode(updatedAt, forKey: .updatedAt)
     }
 }

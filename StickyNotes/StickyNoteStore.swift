@@ -8,17 +8,19 @@ final class StickyNoteStore: ObservableObject {
     private let fileManager = FileManager.default
     private let ioQueue = DispatchQueue(label: "com.example.StickyNotes.file-io", qos: .utility)
     private let syncDirectoryURL: URL
+    private let localFrameStore: LocalFrameStore
     private var directorySource: DispatchSourceFileSystemObject?
     private var directoryDescriptor: Int32 = -1
     private var pendingReload: DispatchWorkItem?
     private var started = false
 
-    init(directoryURL: URL? = nil) {
+    init(directoryURL: URL? = nil, localFrameStore: LocalFrameStore = LocalFrameStore()) {
         syncDirectoryURL = directoryURL ?? fileManager.homeDirectoryForCurrentUser
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Mobile Documents", isDirectory: true)
             .appendingPathComponent("com~apple~CloudDocs", isDirectory: true)
             .appendingPathComponent("StickyNotes", isDirectory: true)
+        self.localFrameStore = localFrameStore
     }
 
     var directoryURL: URL { syncDirectoryURL }
@@ -51,6 +53,7 @@ final class StickyNoteStore: ObservableObject {
         let frame = defaultFrame(for: notes.count)
         let note = StickyNote(frame: frame)
         notes[note.id] = note
+        localFrameStore.setFrame(frame, for: note.id)
         persist(note)
         return note.id
     }
@@ -88,15 +91,16 @@ final class StickyNoteStore: ObservableObject {
     }
 
     func updateFrame(for id: UUID, frame: CGRect) {
+        // ウィンドウ位置/サイズはこのMacのみのローカル情報。iCloud同期ファイルは更新しない。
         guard var note = notes[id], note.frame != frame else { return }
         note.frame = frame
-        note.updatedAt = Date()
         notes[id] = note
-        persist(note)
+        localFrameStore.setFrame(frame, for: id)
     }
 
     func deleteNote(id: UUID) {
         guard notes.removeValue(forKey: id) != nil else { return }
+        localFrameStore.removeFrame(for: id)
         let url = noteURL(for: id)
         ioQueue.async { [fileManager] in
             try? fileManager.removeItem(at: url)
@@ -189,9 +193,9 @@ final class StickyNoteStore: ObservableObject {
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return urls
+        var notes = urls
             .filter { $0.pathExtension.lowercased() == "json" }
-            .compactMap { url in
+            .compactMap { url -> StickyNote? in
                 guard let data = try? Data(contentsOf: url),
                       let note = try? decoder.decode(StickyNote.self, from: data)
                 else {
@@ -200,5 +204,18 @@ final class StickyNoteStore: ObservableObject {
                 }
                 return note
             }
+
+        for index in notes.indices {
+            let id = notes[index].id
+            if let localFrame = localFrameStore.frame(for: id) {
+                notes[index].frame = localFrame
+            } else {
+                // このMacで初めて見る付箋。デコード結果(旧形式なら実座標、新形式ならプレースホルダ)を
+                // 以後このMac用のローカル位置として採用する。
+                localFrameStore.setFrame(notes[index].frame, for: id)
+            }
+        }
+
+        return notes
     }
 }
