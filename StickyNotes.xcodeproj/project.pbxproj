@@ -13,6 +13,7 @@
 		A10000000000000000000004 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* NoteEditorView.swift */; };
 		A10000000000000000000005 /* NoteWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* NoteWindowController.swift */; };
 		A10000000000000000000006 /* LocalFrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* LocalFrameStore.swift */; };
+		A10000000000000000000008 /* LinkAwareTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* LinkAwareTextView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		B10000000000000000000005 /* NoteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowController.swift; sourceTree = "<group>"; };
 		B10000000000000000000006 /* StickyNotes.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StickyNotes.entitlements; sourceTree = "<group>"; };
 		B10000000000000000000007 /* LocalFrameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFrameStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000008 /* LinkAwareTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkAwareTextView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +48,7 @@
 				B10000000000000000000004 /* NoteEditorView.swift */,
 				B10000000000000000000005 /* NoteWindowController.swift */,
 				B10000000000000000000007 /* LocalFrameStore.swift */,
+				B10000000000000000000008 /* LinkAwareTextView.swift */,
 				B10000000000000000000006 /* StickyNotes.entitlements */,
 			);
 			path = StickyNotes;
@@ -136,6 +139,7 @@
 				A10000000000000000000004 /* NoteEditorView.swift in Sources */,
 				A10000000000000000000005 /* NoteWindowController.swift in Sources */,
 				A10000000000000000000006 /* LocalFrameStore.swift in Sources */,
+				A10000000000000000000008 /* LinkAwareTextView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

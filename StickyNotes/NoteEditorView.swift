@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 final class NoteEditorModel: ObservableObject {
@@ -79,11 +80,12 @@ struct NoteEditorView: View {
 
             Divider()
 
-            TextEditor(text: textBinding)
-                .font(.system(size: 16))
-                .foregroundColor(textColor)
-                .scrollContentBackground(.hidden)
-                .padding(10)
+            LinkAwareTextView(
+                text: textBinding,
+                font: .systemFont(ofSize: 16),
+                textColor: NSColor(textColor)
+            )
+            .padding(10)
         }
         .background(backgroundColor)
         .frame(minWidth: 220, minHeight: 160)
