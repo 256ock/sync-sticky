@@ -19,6 +19,8 @@ struct NoteEditorView: View {
     let onDelete: () -> Void
     let onSave: () -> Void
 
+    @State private var isHoveringHeader = false
+
     var body: some View {
         VStack(spacing: 0) {
             Button("Save", action: onSave)
@@ -37,46 +39,16 @@ struct NoteEditorView: View {
                 }
                 .font(.headline)
                 Spacer()
-                Button(action: { onPinnedChanged(!model.note.isPinned) }) {
-                    Image(systemName: model.note.isPinned ? "pin.fill" : "pin")
-                }
-                .buttonStyle(.borderless)
-                .foregroundColor(textColor)
-                .help(model.note.isPinned ? "最前面表示を解除" : "常に最前面に表示")
-                Button(action: { onVariantChanged(!model.note.isDarkVariant) }) {
-                    Image(systemName: model.note.isDarkVariant ? "moon.fill" : "sun.max.fill")
-                }
-                .buttonStyle(.borderless)
-                .foregroundColor(textColor)
-                .help("背景/文字色を反転")
-                HStack(spacing: 6) {
-                    ForEach(NoteColor.allCases) { color in
-                        Circle()
-                            .fill(swatchColor(for: color))
-                            .frame(width: 16, height: 16)
-                            .overlay(
-                                Circle()
-                                    .stroke(textColor, lineWidth: model.note.colorName == color ? 2 : 0)
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.black.opacity(0.15), lineWidth: 0.5)
-                            )
-                            .onTapGesture {
-                                colorBinding.wrappedValue = color
-                            }
-                            .accessibilityLabel(color.displayName)
-                    }
-                }
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.borderless)
-                .foregroundColor(textColor)
-                .help("Delete")
+                controlsGroup
+                    .opacity(isHoveringHeader ? 1 : 0)
+                    .allowsHitTesting(isHoveringHeader)
+                    .animation(.easeInOut(duration: 0.15), value: isHoveringHeader)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .onHover { hovering in
+                isHoveringHeader = hovering
+            }
 
             Divider()
 
@@ -89,6 +61,48 @@ struct NoteEditorView: View {
         }
         .background(backgroundColor)
         .frame(minWidth: 220, minHeight: 160)
+    }
+
+    private var controlsGroup: some View {
+        HStack {
+            Button(action: { onPinnedChanged(!model.note.isPinned) }) {
+                Image(systemName: model.note.isPinned ? "pin.fill" : "pin")
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(textColor)
+            .help(model.note.isPinned ? "最前面表示を解除" : "常に最前面に表示")
+            Button(action: { onVariantChanged(!model.note.isDarkVariant) }) {
+                Image(systemName: model.note.isDarkVariant ? "moon.fill" : "sun.max.fill")
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(textColor)
+            .help("背景/文字色を反転")
+            HStack(spacing: 6) {
+                ForEach(NoteColor.allCases) { color in
+                    Circle()
+                        .fill(swatchColor(for: color))
+                        .frame(width: 16, height: 16)
+                        .overlay(
+                            Circle()
+                                .stroke(textColor, lineWidth: model.note.colorName == color ? 2 : 0)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.black.opacity(0.15), lineWidth: 0.5)
+                        )
+                        .onTapGesture {
+                            colorBinding.wrappedValue = color
+                        }
+                        .accessibilityLabel(color.displayName)
+                }
+            }
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(textColor)
+            .help("Delete")
+        }
     }
 
     private var titleBinding: Binding<String> {
