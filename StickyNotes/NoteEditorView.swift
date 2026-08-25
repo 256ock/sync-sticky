@@ -36,18 +36,18 @@ struct NoteEditorView: View {
                 }
                 .font(.headline)
                 Spacer()
-                Button(action: { onVariantChanged(!model.note.isDarkVariant) }) {
-                    Image(systemName: model.note.isDarkVariant ? "moon.fill" : "sun.max.fill")
-                }
-                .buttonStyle(.borderless)
-                .foregroundColor(textColor)
-                .help("背景/文字色を反転")
                 Button(action: { onPinnedChanged(!model.note.isPinned) }) {
                     Image(systemName: model.note.isPinned ? "pin.fill" : "pin")
                 }
                 .buttonStyle(.borderless)
                 .foregroundColor(textColor)
                 .help(model.note.isPinned ? "最前面表示を解除" : "常に最前面に表示")
+                Button(action: { onVariantChanged(!model.note.isDarkVariant) }) {
+                    Image(systemName: model.note.isDarkVariant ? "moon.fill" : "sun.max.fill")
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(textColor)
+                .help("背景/文字色を反転")
                 HStack(spacing: 6) {
                     ForEach(NoteColor.allCases) { color in
                         Circle()
