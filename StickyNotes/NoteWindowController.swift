@@ -11,6 +11,8 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
     private var applyingStoreUpdate = false
     private var closingFromStore = Set<UUID>()
 
+    private static let unfocusedPinnedAlpha: CGFloat = 0.55
+
     init(store: StickyNoteStore) {
         self.store = store
         super.init()
@@ -30,6 +32,11 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         for (id, window) in windows {
             window.isDocumentEdited = dirtyIDs.contains(id)
         }
+    }
+
+    /// 最前面固定(isPinned)中、フォーカスが無い間は半透明化して背後の作業の邪魔にならないようにする。
+    private func updateAlpha(for window: NSWindow, isPinned: Bool) {
+        window.alphaValue = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
     }
 
     func showNewNote() {
@@ -81,6 +88,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
                     window.setFrame(note.frame, display: true)
                 }
                 window.level = note.isPinned ? .floating : .normal
+                updateAlpha(for: window, isPinned: note.isPinned)
             } else {
                 createWindow(for: note)
             }
@@ -132,6 +140,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         windows[note.id] = window
         models[note.id] = model
         window.isDocumentEdited = store.dirtyNoteIDs.contains(note.id)
+        updateAlpha(for: window, isPinned: note.isPinned)
     }
 
     func windowShouldClose(_ window: NSWindow) -> Bool {
@@ -150,6 +159,19 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 
     func windowDidBecomeKey(_ notification: Notification) {
         NSApp.activate(ignoringOtherApps: true)
+        refreshAlpha(for: notification)
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        refreshAlpha(for: notification)
+    }
+
+    private func refreshAlpha(for notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              let id = id(for: window),
+              let note = store.notes[id]
+        else { return }
+        updateAlpha(for: window, isPinned: note.isPinned)
     }
 
     func windowDidMove(_ notification: Notification) {
