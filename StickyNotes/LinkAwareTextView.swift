@@ -36,6 +36,9 @@ struct LinkAwareTextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        // IME変換中(未確定文字入力中)はstring/属性を書き換えない。
+        // ここで textStorage を触ると変換中の marked text が壊れ、日本語入力が不安定になる。
+        guard !textView.hasMarkedText() else { return }
         if textView.string != text {
             textView.string = text
         }
@@ -74,6 +77,8 @@ struct LinkAwareTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            // 変換中の未確定文字を確定前にバインディングへ伝播させない(確定後に改めて反映される)。
+            guard !textView.hasMarkedText() else { return }
             text.wrappedValue = textView.string
         }
 

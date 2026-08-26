@@ -39,6 +39,13 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         window.alphaValue = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
     }
 
+    /// .fullScreenAuxiliary は最前面固定の付箋のみに限定する。
+    /// 全ウィンドウに付けていると、ピン留めOFFでも他アプリの全画面(動画再生等)の
+    /// 上に付箋が表示されてしまう。
+    private func collectionBehavior(isPinned: Bool) -> NSWindow.CollectionBehavior {
+        isPinned ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
+    }
+
     func showNewNote() {
         let id = store.createNote()
         DispatchQueue.main.async { [weak self] in
@@ -88,6 +95,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
                     window.setFrame(note.frame, display: true)
                 }
                 window.level = note.isPinned ? .floating : .normal
+                window.collectionBehavior = collectionBehavior(isPinned: note.isPinned)
                 updateAlpha(for: window, isPinned: note.isPinned)
             } else {
                 createWindow(for: note)
@@ -132,7 +140,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.level = note.isPinned ? .floating : .normal
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.collectionBehavior = collectionBehavior(isPinned: note.isPinned)
         window.contentView = NSHostingView(rootView: view)
         window.minSize = CGSize(width: 220, height: 160)
         window.orderFrontRegardless()
