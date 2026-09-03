@@ -36,7 +36,7 @@ struct StickyNote: Codable, Equatable, Identifiable {
         text: String = "",
         colorName: NoteColor = .yellow,
         isDarkVariant: Bool = false,
-        isPinned: Bool = true,
+        isPinned: Bool = false,
         frame: CGRect = CGRect(origin: .zero, size: StickyNote.defaultSize),
         updatedAt: Date = Date()
     ) {
