@@ -9,6 +9,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
     private var windows: [UUID: NSWindow] = [:]
     private var models: [UUID: NoteEditorModel] = [:]
     private var titlebarControllers: [UUID: NoteTitlebarAccessoryController] = [:]
+    private var titlebarControlControllers: [UUID: NoteTitlebarControlsAccessoryController] = [:]
     private var applyingStoreUpdate = false
     private var closingFromStore = Set<UUID>()
 
@@ -37,7 +38,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 
     /// Make pinned notes translucent while unfocused so they interfere less with work behind them.
     private func updateAlpha(for window: NSWindow, isPinned: Bool) {
-        window.alphaValue = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
+        window.contentView?.alphaValue = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
     }
 
     /// Apply .fullScreenAuxiliary only to pinned notes. Applying it to every window would
@@ -63,6 +64,8 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         }
         windows.removeAll()
         models.removeAll()
+        titlebarControllers.removeAll()
+        titlebarControlControllers.removeAll()
     }
 
     func applicationWillTerminate() {
@@ -87,12 +90,13 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             }
             models.removeValue(forKey: id)
             titlebarControllers.removeValue(forKey: id)
+            titlebarControlControllers.removeValue(forKey: id)
         }
 
         for note in notes.values {
             if let window = windows[note.id], let model = models[note.id] {
                 model.note = note
-                titlebarControllers[note.id]?.setTitle(note.title, isDarkVariant: note.isDarkVariant)
+                titlebarControllers[note.id]?.setTitle(note.title)
                 window.title = note.title.isEmpty ? "Untitled" : note.title
                 if window.frame != note.frame {
                     window.setFrame(note.frame, display: true)
@@ -113,6 +117,37 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             onTextChanged: { [weak self] text in
                 self?.store.updateText(for: note.id, text: text)
             },
+            onSave: { [weak self] in
+                self?.store.saveNow(id: note.id)
+            }
+        )
+
+        let window = NSWindow(
+            contentRect: CGRect(
+                x: note.frame.origin.x,
+                y: note.frame.origin.y,
+                width: max(note.frame.width, 360),
+                height: note.frame.height
+            ),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = note.title.isEmpty ? "Untitled" : note.title
+        window.titleVisibility = .hidden
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        window.level = note.isPinned ? .floating : .normal
+        window.collectionBehavior = collectionBehavior(isPinned: note.isPinned)
+        window.contentView = NSHostingView(rootView: view)
+        let titlebarController = NoteTitlebarAccessoryController(
+            title: note.title,
+            onTitleChanged: { [weak self] title in
+                self?.store.updateTitle(for: note.id, title: title)
+            }
+        )
+        let titlebarControlController = NoteTitlebarControlsAccessoryController(
+            model: model,
             onColorChanged: { [weak self] color in
                 self?.store.updateColor(for: note.id, color: color)
             },
@@ -121,39 +156,18 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             },
             onPinnedChanged: { [weak self] isPinned in
                 self?.store.updatePinned(for: note.id, isPinned: isPinned)
-            },
-            onSave: { [weak self] in
-                self?.store.saveNow(id: note.id)
             }
         )
-
-        let window = NSWindow(
-            contentRect: note.frame,
-            styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = note.title.isEmpty ? "Untitled" : note.title
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-        window.level = note.isPinned ? .floating : .normal
-        window.collectionBehavior = collectionBehavior(isPinned: note.isPinned)
-        window.contentView = NSHostingView(rootView: view)
-        let titlebarController = NoteTitlebarAccessoryController(
-            title: note.title,
-            isDarkVariant: note.isDarkVariant
-        ) { [weak self] title in
-            self?.store.updateTitle(for: note.id, title: title)
-        }
         window.addTitlebarAccessoryViewController(titlebarController)
-        window.minSize = CGSize(width: 220, height: 160)
+        window.addTitlebarAccessoryViewController(titlebarControlController)
+        window.minSize = CGSize(width: 360, height: 160)
         window.orderFrontRegardless()
 
         windows[note.id] = window
         models[note.id] = model
         titlebarControllers[note.id] = titlebarController
+        titlebarControlControllers[note.id] = titlebarControlController
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.isDocumentEdited = store.dirtyNoteIDs.contains(note.id)
         updateAlpha(for: window, isPinned: note.isPinned)
     }
@@ -171,6 +185,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         windows.removeValue(forKey: id)
         models.removeValue(forKey: id)
         titlebarControllers.removeValue(forKey: id)
+        titlebarControlControllers.removeValue(forKey: id)
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
@@ -215,7 +230,7 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
     private let titleField = NSTextField()
     private let onTitleChanged: (String) -> Void
 
-    init(title: String, isDarkVariant: Bool, onTitleChanged: @escaping (String) -> Void) {
+    init(title: String, onTitleChanged: @escaping (String) -> Void) {
         self.onTitleChanged = onTitleChanged
         super.init(nibName: nil, bundle: nil)
 
@@ -227,10 +242,10 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
         titleField.isBordered = false
         titleField.drawsBackground = false
         titleField.font = .systemFont(ofSize: 13)
-        setTextColor(isDarkVariant: isDarkVariant)
+        setTextColor()
         titleField.delegate = self
         titleField.translatesAutoresizingMaskIntoConstraints = false
-
+        titleField.focusRingType = .none
         preferredContentSize = CGSize(width: 150, height: 24)
     }
 
@@ -238,8 +253,8 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 150, height: 24))
         container.addSubview(titleField)
         NSLayoutConstraint.activate([
-            titleField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            titleField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            titleField.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 5),
+            titleField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -5),
             titleField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             container.heightAnchor.constraint(equalToConstant: 24)
         ])
@@ -250,23 +265,62 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
         fatalError("init(coder:) has not been implemented")
     }
 
-    func setTitle(_ title: String, isDarkVariant: Bool) {
+    func setTitle(_ title: String) {
         if titleField.stringValue != title {
             titleField.stringValue = title
         }
-        setTextColor(isDarkVariant: isDarkVariant)
+        setTextColor()
     }
 
-    private func setTextColor(isDarkVariant: Bool) {
-        let color: NSColor = isDarkVariant ? .white : .black
-        titleField.textColor = color
+    private func setTextColor() {
+        titleField.textColor = .labelColor
         titleField.placeholderAttributedString = NSAttributedString(
             string: "Untitled",
-            attributes: [.foregroundColor: color]
+            attributes: [.foregroundColor: NSColor.labelColor]
         )
     }
 
     func controlTextDidChange(_ notification: Notification) {
         onTitleChanged(titleField.stringValue)
+    }
+}
+
+private final class NoteTitlebarControlsAccessoryController: NSTitlebarAccessoryViewController {
+    private let model: NoteEditorModel
+    private let onColorChanged: (NoteColor) -> Void
+    private let onVariantChanged: (Bool) -> Void
+    private let onPinnedChanged: (Bool) -> Void
+
+    init(
+        model: NoteEditorModel,
+        onColorChanged: @escaping (NoteColor) -> Void,
+        onVariantChanged: @escaping (Bool) -> Void,
+        onPinnedChanged: @escaping (Bool) -> Void
+    ) {
+        self.model = model
+        self.onColorChanged = onColorChanged
+        self.onVariantChanged = onVariantChanged
+        self.onPinnedChanged = onPinnedChanged
+        super.init(nibName: nil, bundle: nil)
+
+        layoutAttribute = .right
+        preferredContentSize = CGSize(width: 115, height: 24)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func loadView() {
+        let controlsView = NSHostingView(
+            rootView: NoteTitlebarControlsView(
+                model: model,
+                onColorChanged: onColorChanged,
+                onVariantChanged: onVariantChanged,
+                onPinnedChanged: onPinnedChanged
+            )
+        )
+        controlsView.frame = NSRect(x: 0, y: 0, width: 115, height: 24)
+        view = controlsView
     }
 }

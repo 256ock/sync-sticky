@@ -19,6 +19,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var autoSaveMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        if let existingInstance = NSRunningApplication
+            .runningApplications(withBundleIdentifier: bundleIdentifier)
+            .first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) {
+            existingInstance.activate(options: [.activateAllWindows])
+            NSApp.terminate(nil)
+            return
+        }
+
         NSApp.setActivationPolicy(.accessory)
 
         let controller = NoteWindowController(store: store)
