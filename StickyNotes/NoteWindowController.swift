@@ -92,7 +92,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         for note in notes.values {
             if let window = windows[note.id], let model = models[note.id] {
                 model.note = note
-                titlebarControllers[note.id]?.setTitle(note.title)
+                titlebarControllers[note.id]?.setTitle(note.title, isDarkVariant: note.isDarkVariant)
                 window.title = note.title.isEmpty ? "Untitled" : note.title
                 if window.frame != note.frame {
                     window.setFrame(note.frame, display: true)
@@ -129,18 +129,22 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 
         let window = NSWindow(
             contentRect: note.frame,
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = note.title.isEmpty ? "Untitled" : note.title
         window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.level = note.isPinned ? .floating : .normal
         window.collectionBehavior = collectionBehavior(isPinned: note.isPinned)
         window.contentView = NSHostingView(rootView: view)
-        let titlebarController = NoteTitlebarAccessoryController(title: note.title) { [weak self] title in
+        let titlebarController = NoteTitlebarAccessoryController(
+            title: note.title,
+            isDarkVariant: note.isDarkVariant
+        ) { [weak self] title in
             self?.store.updateTitle(for: note.id, title: title)
         }
         window.addTitlebarAccessoryViewController(titlebarController)
@@ -211,26 +215,32 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
     private let titleField = NSTextField()
     private let onTitleChanged: (String) -> Void
 
-    init(title: String, onTitleChanged: @escaping (String) -> Void) {
+    init(title: String, isDarkVariant: Bool, onTitleChanged: @escaping (String) -> Void) {
         self.onTitleChanged = onTitleChanged
         super.init(nibName: nil, bundle: nil)
 
         layoutAttribute = .left
         titleField.stringValue = title
         titleField.placeholderString = "Untitled"
+        titleField.isEditable = true
+        titleField.isSelectable = true
         titleField.isBordered = false
         titleField.drawsBackground = false
         titleField.font = .systemFont(ofSize: 13)
+        titleField.textColor = isDarkVariant ? .white : .black
         titleField.delegate = self
         titleField.translatesAutoresizingMaskIntoConstraints = false
 
-        let container = NSView()
+        preferredContentSize = CGSize(width: 150, height: 24)
+    }
+
+    override func loadView() {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 150, height: 24))
         container.addSubview(titleField)
         NSLayoutConstraint.activate([
             titleField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             titleField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             titleField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            container.widthAnchor.constraint(equalToConstant: 200),
             container.heightAnchor.constraint(equalToConstant: 24)
         ])
         view = container
@@ -240,9 +250,11 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
         fatalError("init(coder:) has not been implemented")
     }
 
-    func setTitle(_ title: String) {
-        guard titleField.stringValue != title else { return }
-        titleField.stringValue = title
+    func setTitle(_ title: String, isDarkVariant: Bool) {
+        if titleField.stringValue != title {
+            titleField.stringValue = title
+        }
+        titleField.textColor = isDarkVariant ? .white : .black
     }
 
     func controlTextDidChange(_ notification: Notification) {

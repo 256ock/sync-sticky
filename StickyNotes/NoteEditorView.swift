@@ -33,7 +33,7 @@ struct NoteEditorView: View {
                     .animation(.easeInOut(duration: 0.15), value: isHoveringHeader)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 3)
             .onHover { hovering in
                 isHoveringHeader = hovering
             }
