@@ -227,7 +227,7 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
         titleField.isBordered = false
         titleField.drawsBackground = false
         titleField.font = .systemFont(ofSize: 13)
-        titleField.textColor = isDarkVariant ? .white : .black
+        setTextColor(isDarkVariant: isDarkVariant)
         titleField.delegate = self
         titleField.translatesAutoresizingMaskIntoConstraints = false
 
@@ -254,7 +254,16 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
         if titleField.stringValue != title {
             titleField.stringValue = title
         }
-        titleField.textColor = isDarkVariant ? .white : .black
+        setTextColor(isDarkVariant: isDarkVariant)
+    }
+
+    private func setTextColor(isDarkVariant: Bool) {
+        let color: NSColor = isDarkVariant ? .white : .black
+        titleField.textColor = color
+        titleField.placeholderAttributedString = NSAttributedString(
+            string: "Untitled",
+            attributes: [.foregroundColor: color]
+        )
     }
 
     func controlTextDidChange(_ notification: Notification) {
