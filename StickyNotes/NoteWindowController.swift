@@ -8,6 +8,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
     private var dirtySubscription: AnyCancellable?
     private var windows: [UUID: NSWindow] = [:]
     private var models: [UUID: NoteEditorModel] = [:]
+    private var titlebarControllers: [UUID: NoteTitlebarAccessoryController] = [:]
     private var applyingStoreUpdate = false
     private var closingFromStore = Set<UUID>()
 
@@ -85,11 +86,14 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
                 closingFromStore.remove(id)
             }
             models.removeValue(forKey: id)
+            titlebarControllers.removeValue(forKey: id)
         }
 
         for note in notes.values {
             if let window = windows[note.id], let model = models[note.id] {
                 model.note = note
+                titlebarControllers[note.id]?.setTitle(note.title)
+                window.title = note.title.isEmpty ? "Untitled" : note.title
                 if window.frame != note.frame {
                     window.setFrame(note.frame, display: true)
                 }
@@ -106,9 +110,6 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         let model = NoteEditorModel(note: note)
         let view = NoteEditorView(
             model: model,
-            onTitleChanged: { [weak self] title in
-                self?.store.updateTitle(for: note.id, title: title)
-            },
             onTextChanged: { [weak self] text in
                 self?.store.updateText(for: note.id, text: text)
             },
@@ -121,9 +122,6 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             onPinnedChanged: { [weak self] isPinned in
                 self?.store.updatePinned(for: note.id, isPinned: isPinned)
             },
-            onDelete: { [weak self] in
-                self?.store.deleteNote(id: note.id)
-            },
             onSave: { [weak self] in
                 self?.store.saveNow(id: note.id)
             }
@@ -135,17 +133,23 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "Sticky Note"
+        window.title = note.title.isEmpty ? "Untitled" : note.title
+        window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.level = note.isPinned ? .floating : .normal
         window.collectionBehavior = collectionBehavior(isPinned: note.isPinned)
         window.contentView = NSHostingView(rootView: view)
+        let titlebarController = NoteTitlebarAccessoryController(title: note.title) { [weak self] title in
+            self?.store.updateTitle(for: note.id, title: title)
+        }
+        window.addTitlebarAccessoryViewController(titlebarController)
         window.minSize = CGSize(width: 220, height: 160)
         window.orderFrontRegardless()
 
         windows[note.id] = window
         models[note.id] = model
+        titlebarControllers[note.id] = titlebarController
         window.isDocumentEdited = store.dirtyNoteIDs.contains(note.id)
         updateAlpha(for: window, isPinned: note.isPinned)
     }
@@ -162,6 +166,7 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         guard let window = notification.object as? NSWindow, let id = id(for: window) else { return }
         windows.removeValue(forKey: id)
         models.removeValue(forKey: id)
+        titlebarControllers.removeValue(forKey: id)
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
@@ -199,5 +204,48 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 
     private func id(for window: NSWindow) -> UUID? {
         windows.first { $0.value === window }?.key
+    }
+}
+
+private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewController, NSTextFieldDelegate {
+    private let titleField = NSTextField()
+    private let onTitleChanged: (String) -> Void
+
+    init(title: String, onTitleChanged: @escaping (String) -> Void) {
+        self.onTitleChanged = onTitleChanged
+        super.init(nibName: nil, bundle: nil)
+
+        layoutAttribute = .left
+        titleField.stringValue = title
+        titleField.placeholderString = "Untitled"
+        titleField.isBordered = false
+        titleField.drawsBackground = false
+        titleField.font = .systemFont(ofSize: 13)
+        titleField.delegate = self
+        titleField.translatesAutoresizingMaskIntoConstraints = false
+
+        let container = NSView()
+        container.addSubview(titleField)
+        NSLayoutConstraint.activate([
+            titleField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            titleField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            titleField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            container.widthAnchor.constraint(equalToConstant: 200),
+            container.heightAnchor.constraint(equalToConstant: 24)
+        ])
+        view = container
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func setTitle(_ title: String) {
+        guard titleField.stringValue != title else { return }
+        titleField.stringValue = title
+    }
+
+    func controlTextDidChange(_ notification: Notification) {
+        onTitleChanged(titleField.stringValue)
     }
 }

@@ -11,12 +11,10 @@ final class NoteEditorModel: ObservableObject {
 
 struct NoteEditorView: View {
     @ObservedObject var model: NoteEditorModel
-    let onTitleChanged: (String) -> Void
     let onTextChanged: (String) -> Void
     let onColorChanged: (NoteColor) -> Void
     let onVariantChanged: (Bool) -> Void
     let onPinnedChanged: (Bool) -> Void
-    let onDelete: () -> Void
     let onSave: () -> Void
 
     @State private var isHoveringHeader = false
@@ -28,16 +26,6 @@ struct NoteEditorView: View {
                 .hidden()
                 .frame(width: 0, height: 0)
             HStack {
-                ZStack(alignment: .leading) {
-                    if model.note.title.isEmpty {
-                        Text("Untitled")
-                            .foregroundColor(textColor.opacity(0.5))
-                    }
-                    TextField("", text: titleBinding)
-                        .textFieldStyle(.plain)
-                        .foregroundColor(textColor)
-                }
-                .font(.headline)
                 Spacer()
                 controlsGroup
                     .opacity(isHoveringHeader ? 1 : 0)
@@ -96,23 +84,7 @@ struct NoteEditorView: View {
                         .accessibilityLabel(color.displayName)
                 }
             }
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
-            .foregroundColor(textColor)
-            .help("Delete")
         }
-    }
-
-    private var titleBinding: Binding<String> {
-        Binding(
-            get: { model.note.title },
-            set: { value in
-                model.note.title = value
-                onTitleChanged(value)
-            }
-        )
     }
 
     private var textBinding: Binding<String> {
