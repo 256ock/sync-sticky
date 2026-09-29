@@ -5,7 +5,7 @@ import Darwin
 final class StickyNoteStore: ObservableObject {
     @Published private(set) var notes: [UUID: StickyNote] = [:]
     @Published private(set) var autoSaveEnabled: Bool
-    /// 変更あり・未保存の付箋ID(手動保存待ち、または自動保存デバウンス待ち)。
+    /// IDs of modified notes waiting for manual save or the automatic-save debounce.
     @Published private(set) var dirtyNoteIDs: Set<UUID> = []
 
     private let fileManager = FileManager.default
@@ -117,13 +117,13 @@ final class StickyNoteStore: ObservableObject {
         scheduleAutoSave(for: id)
     }
 
-    /// 保留中のデバウンス保存があれば取消し、即座にディスクへ書き込む(Cmd+S / ウィンドウを閉じる時など)。
+    /// Cancel any pending debounced save and write the note immediately (for Command-S or when closing a window).
     func saveNow(id: UUID) {
         pendingSaves[id]?.cancel()
         flushSave(for: id)
     }
 
-    /// 全付箋の保留中の保存を即座に反映する(アプリ終了時など)。
+    /// Immediately write all notes with pending saves (for example, when the app is quitting).
     func flushAllPendingSaves() {
         for id in Array(pendingSaves.keys) {
             pendingSaves[id]?.cancel()
@@ -149,7 +149,7 @@ final class StickyNoteStore: ObservableObject {
     }
 
     func updateFrame(for id: UUID, frame: CGRect) {
-        // ウィンドウ位置/サイズはこのMacのみのローカル情報。iCloud同期ファイルは更新しない。
+        // Window position and size are local to this Mac and are not written to the iCloud sync files.
         guard var note = notes[id], note.frame != frame else { return }
         note.frame = frame
         notes[id] = note
@@ -242,8 +242,8 @@ final class StickyNoteStore: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var merged = Dictionary(uniqueKeysWithValues: loadedNotes.map { ($0.id, $0) })
-            // 未保存(デバウンス待ち/手動保存待ち)の付箋は、ディスクの内容で上書きせず
-            // メモリ上の最新内容を保持する(他Macの変更検知による全件再読込との競合を防ぐ)。
+            // Keep the in-memory contents of notes with pending saves instead of replacing them with
+            // disk contents. This avoids races with a full reload triggered by changes on another Mac.
             for id in dirtyNoteIDs {
                 if let currentNote = self.notes[id] {
                     merged[id] = currentNote
@@ -279,8 +279,8 @@ final class StickyNoteStore: ObservableObject {
             if let localFrame = localFrameStore.frame(for: id) {
                 notes[index].frame = localFrame
             } else {
-                // このMacで初めて見る付箋。デコード結果(旧形式なら実座標、新形式ならプレースホルダ)を
-                // 以後このMac用のローカル位置として採用する。
+                // This note is new to this Mac. Use the decoded frame (legacy coordinates or a new-format
+                // placeholder) as its local position on this Mac from now on.
                 localFrameStore.setFrame(notes[index].frame, for: id)
             }
         }

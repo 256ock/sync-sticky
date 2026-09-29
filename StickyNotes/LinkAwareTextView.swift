@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// プレーンテキストを編集しつつ、本文中のURLを自動検出してCmd+クリックで
-/// 既定ブラウザで開けるようにするテキストビュー。
+/// An editable plain-text view that detects URLs in the note body and opens them
+/// in the default browser with Command-click.
 struct LinkAwareTextView: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont
@@ -36,8 +36,8 @@ struct LinkAwareTextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
-        // IME変換中(未確定文字入力中)はstring/属性を書き換えない。
-        // ここで textStorage を触ると変換中の marked text が壊れ、日本語入力が不安定になる。
+        // Do not change the string or its attributes while an input method has marked text.
+        // Editing textStorage here can disrupt composition and make Japanese input unreliable.
         guard !textView.hasMarkedText() else { return }
         if textView.string != text {
             textView.string = text
@@ -77,7 +77,8 @@ struct LinkAwareTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            // 変換中の未確定文字を確定前にバインディングへ伝播させない(確定後に改めて反映される)。
+            // Do not propagate marked text to the binding before composition completes; it will be
+            // applied again after the input method commits the text.
             guard !textView.hasMarkedText() else { return }
             text.wrappedValue = textView.string
         }

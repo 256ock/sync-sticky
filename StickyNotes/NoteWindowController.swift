@@ -34,14 +34,13 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    /// 最前面固定(isPinned)中、フォーカスが無い間は半透明化して背後の作業の邪魔にならないようにする。
+    /// Make pinned notes translucent while unfocused so they interfere less with work behind them.
     private func updateAlpha(for window: NSWindow, isPinned: Bool) {
         window.alphaValue = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
     }
 
-    /// .fullScreenAuxiliary は最前面固定の付箋のみに限定する。
-    /// 全ウィンドウに付けていると、ピン留めOFFでも他アプリの全画面(動画再生等)の
-    /// 上に付箋が表示されてしまう。
+    /// Apply .fullScreenAuxiliary only to pinned notes. Applying it to every window would
+    /// show unpinned notes over other apps in full-screen mode, such as video players.
     private func collectionBehavior(isPinned: Bool) -> NSWindow.CollectionBehavior {
         isPinned ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
     }

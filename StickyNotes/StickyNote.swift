@@ -74,11 +74,11 @@ struct StickyNote: Codable, Equatable, Identifiable {
         text = try container.decode(String.self, forKey: .text)
         colorName = try container.decode(NoteColor.self, forKey: .colorName)
         isDarkVariant = try container.decodeIfPresent(Bool.self, forKey: .isDarkVariant) ?? false
-        // 旧形式ファイルには無い項目。これまで全付箋が常に最前面固定だったため、
-        // 後方互換としてデフォルトはtrue(最前面)にする。
+        // This field is absent from legacy files. Default it to true for backward compatibility,
+        // since all notes used to stay above other windows.
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? true
-        // ウィンドウ位置/サイズはMacごとのローカル情報。同期ファイルには含めない。
-        // 旧形式ファイルに残っていれば初回移行のシード値として読み込む。
+        // Window position and size are local to each Mac and are not included in synced files.
+        // Read them from legacy files, if present, as seed values for the initial migration.
         let legacyFrame = CGRect(
             x: try container.decodeIfPresent(Double.self, forKey: .x) ?? 0,
             y: try container.decodeIfPresent(Double.self, forKey: .y) ?? 0,
