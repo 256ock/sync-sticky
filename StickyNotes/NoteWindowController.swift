@@ -38,7 +38,9 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 
     /// Make pinned notes translucent while unfocused so they interfere less with work behind them.
     private func updateAlpha(for window: NSWindow, isPinned: Bool) {
-        window.contentView?.alphaValue = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
+        guard let id = id(for: window), let model = models[id] else { return }
+        model.isWindowActive = window.isKeyWindow
+        model.contentOpacity = (isPinned && !window.isKeyWindow) ? Self.unfocusedPinnedAlpha : 1.0
     }
 
     /// Apply .fullScreenAuxiliary only to pinned notes. Applying it to every window would
@@ -135,6 +137,8 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         )
         window.title = note.title.isEmpty ? "Untitled" : note.title
         window.titleVisibility = .hidden
+        window.isOpaque = false
+        window.backgroundColor = .clear
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.level = note.isPinned ? .floating : .normal
@@ -229,6 +233,8 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
 private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewController, NSTextFieldDelegate {
     private let titleField = NSTextField()
     private let onTitleChanged: (String) -> Void
+    private var titleFieldWidthConstraint: NSLayoutConstraint?
+    private let titleFieldMaximumWidth: CGFloat = 140
 
     init(title: String, onTitleChanged: @escaping (String) -> Void) {
         self.onTitleChanged = onTitleChanged
@@ -250,15 +256,18 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
     }
 
     override func loadView() {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 150, height: 24))
+        let container = TitlebarDragView(frame: NSRect(x: 0, y: 0, width: 150, height: 24))
         container.addSubview(titleField)
+        let widthConstraint = titleField.widthAnchor.constraint(equalToConstant: 0)
+        titleFieldWidthConstraint = widthConstraint
         NSLayoutConstraint.activate([
             titleField.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 5),
-            titleField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -5),
             titleField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            widthConstraint,
             container.heightAnchor.constraint(equalToConstant: 24)
         ])
         view = container
+        updateTitleFieldWidth()
     }
 
     required init?(coder: NSCoder) {
@@ -270,6 +279,13 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
             titleField.stringValue = title
         }
         setTextColor()
+        updateTitleFieldWidth()
+    }
+
+    private func updateTitleFieldWidth() {
+        let displayedTitle = titleField.stringValue.isEmpty ? (titleField.placeholderString ?? "") : titleField.stringValue
+        let textWidth = (displayedTitle as NSString).size(withAttributes: [.font: titleField.font ?? .systemFont(ofSize: 13)]).width
+        titleFieldWidthConstraint?.constant = min(ceil(textWidth + 8), titleFieldMaximumWidth)
     }
 
     private func setTextColor() {
@@ -282,6 +298,13 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
 
     func controlTextDidChange(_ notification: Notification) {
         onTitleChanged(titleField.stringValue)
+        updateTitleFieldWidth()
+    }
+}
+
+private final class TitlebarDragView: NSView {
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
     }
 }
 

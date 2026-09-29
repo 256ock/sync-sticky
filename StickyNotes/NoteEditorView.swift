@@ -3,6 +3,8 @@ import SwiftUI
 
 final class NoteEditorModel: ObservableObject {
     @Published var note: StickyNote
+    @Published var contentOpacity: Double = 1
+    @Published var isWindowActive = false
 
     init(note: StickyNote) {
         self.note = note
@@ -29,6 +31,7 @@ struct NoteEditorView: View {
         }
         .background(backgroundColor)
         .frame(minWidth: 220, minHeight: 160)
+        .opacity(model.contentOpacity)
     }
 
     private var textBinding: Binding<String> {
@@ -105,6 +108,13 @@ struct NoteTitlebarControlsView: View {
     }
 
     var body: some View {
+        Group {
+            if model.isWindowActive { controls }
+        }
+        .frame(width: 115, height: 24)
+    }
+
+    private var controls: some View {
         HStack(spacing: 5) {
             Button(action: { onPinnedChanged(!model.note.isPinned) }) {
                 Image(systemName: model.note.isPinned ? "pin.fill" : "pin")
@@ -145,7 +155,6 @@ struct NoteTitlebarControlsView: View {
         }
         .padding(.leading, 3)
         .padding(.trailing, 10)
-        .frame(width: 115, height: 24)
     }
 
     private func swatchColor(for color: NoteColor) -> Color {
