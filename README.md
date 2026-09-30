@@ -15,18 +15,24 @@ Sync Sticky is a lightweight macOS sticky notes app. It keeps note content in iC
 ## Requirements
 
 - macOS 13 or later
-- Xcode
+- Xcode Command Line Tools
 - iCloud Drive enabled for cross-device sync
 
 ## Build and run
 
-Open `StickyNotes.xcodeproj` in Xcode, select the `StickyNotes` scheme, and build and run the app.
-
-You can also build from Terminal:
+Install the Command Line Tools if needed:
 
 ```sh
-xcodebuild -project StickyNotes.xcodeproj -scheme StickyNotes -configuration Debug build
+xcode-select --install
 ```
+
+Build and package the app from Terminal:
+
+```sh
+Scripts/build_release.sh
+```
+
+The app is written to `dist/StickyNotes.app`. The build uses the Command Line Tools Swift compiler and macOS SDK; it does not require the Xcode app. It builds for the Mac's current processor architecture.
 
 ## Data storage and sync
 
