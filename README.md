@@ -1,4 +1,4 @@
-# Sync Sticky
+# Sync Sticky (StickyNotes)
 
 Sync Sticky is a lightweight macOS sticky notes app. It keeps note content in iCloud Drive so it can be shared across Macs signed in to the same iCloud account.
 
