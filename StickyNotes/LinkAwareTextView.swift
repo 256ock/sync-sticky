@@ -13,21 +13,36 @@ struct LinkAwareTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let textView = NSTextView()
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 340, height: 140))
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .noBorder
+
+        let textView = NSTextView(frame: scrollView.contentView.bounds)
         textView.delegate = context.coordinator
         textView.isEditable = true
+        textView.isSelectable = true
         textView.isRichText = true
         textView.isAutomaticLinkDetectionEnabled = false
         textView.allowsUndo = true
         textView.drawsBackground = false
+        textView.minSize = .zero
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
         textView.textContainerInset = NSSize(width: 0, height: 0)
         textView.textContainer?.lineFragmentPadding = 0
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentView.bounds.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         textView.string = text
 
-        let scrollView = NSScrollView()
-        scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
-        scrollView.borderType = .noBorder
         scrollView.documentView = textView
 
         applyStyle(to: textView)

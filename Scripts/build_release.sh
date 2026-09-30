@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 CLT_DIR="/Library/Developer/CommandLineTools"
 if [[ ! -x "$CLT_DIR/usr/bin/swiftc" || ! -d "$CLT_DIR/SDKs/MacOSX.sdk" ]]; then
-  echo "Xcode Command Line Tools are required. Install them with: xcode-select --install" >&2
+  echo "Command Line Tools are required. Install them with: xcode-select --install" >&2
   exit 1
 fi
 

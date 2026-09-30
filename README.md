@@ -15,7 +15,7 @@ Sync Sticky is a lightweight macOS sticky notes app. It keeps note content in iC
 ## Requirements
 
 - macOS 13 or later
-- Xcode Command Line Tools
+- Command Line Tools for macOS (Swift compiler and macOS SDK)
 - iCloud Drive enabled for cross-device sync
 
 ## Build and run

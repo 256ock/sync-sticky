@@ -165,7 +165,6 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         window.addTitlebarAccessoryViewController(titlebarController)
         window.addTitlebarAccessoryViewController(titlebarControlController)
         window.minSize = CGSize(width: 360, height: 160)
-        window.orderFrontRegardless()
 
         windows[note.id] = window
         models[note.id] = model
@@ -173,6 +172,8 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         titlebarControlControllers[note.id] = titlebarControlController
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.isDocumentEdited = store.dirtyNoteIDs.contains(note.id)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         updateAlpha(for: window, isPinned: note.isPinned)
     }
 
