@@ -181,6 +181,15 @@ final class NoteWindowController: NSObject, NSWindowDelegate {
         guard let id = id(for: window), !closingFromStore.contains(id), !applyingStoreUpdate else {
             return true
         }
+        if store.dirtyNoteIDs.contains(id) {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Delete this note with unsaved changes?"
+            alert.informativeText = "This note and its saved content will be deleted. This action cannot be undone."
+            alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: "Delete")
+            guard alert.runModal() == .alertSecondButtonReturn else { return false }
+        }
         store.deleteNote(id: id)
         return true
     }
