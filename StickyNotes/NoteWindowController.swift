@@ -293,7 +293,8 @@ private final class NoteTitlebarAccessoryController: NSTitlebarAccessoryViewCont
     }
 
     private func updateTitleFieldWidth() {
-        let displayedTitle = titleField.stringValue.isEmpty ? (titleField.placeholderString ?? "") : titleField.stringValue
+        let placeholder = titleField.placeholderAttributedString?.string ?? titleField.placeholderString ?? ""
+        let displayedTitle = titleField.stringValue.isEmpty ? placeholder : titleField.stringValue
         let textWidth = (displayedTitle as NSString).size(withAttributes: [.font: titleField.font ?? .systemFont(ofSize: 13)]).width
         titleFieldWidthConstraint?.constant = min(ceil(textWidth + 8), titleFieldMaximumWidth)
     }

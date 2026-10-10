@@ -69,6 +69,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainMenu.addItem(appMenuItem)
 
         let fileMenu = NSMenu(title: "File")
+        let newNoteItem = NSMenuItem(title: "New Sticky Note", action: #selector(createStickyNote(_:)), keyEquivalent: "n")
+        newNoteItem.target = self
+        fileMenu.addItem(newNoteItem)
+        fileMenu.addItem(.separator())
         fileMenu.addItem(NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
         let fileMenuItem = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
         fileMenuItem.submenu = fileMenu
