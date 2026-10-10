@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         NSApp.setActivationPolicy(.accessory)
+        configureMainMenu()
 
         let controller = NoteWindowController(store: store)
         windowController = controller
@@ -55,6 +56,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleAutoSave(_ sender: Any?) {
         store.setAutoSaveEnabled(!store.autoSaveEnabled)
+    }
+
+    private func configureMainMenu() {
+        let mainMenu = NSMenu()
+        let appMenu = NSMenu()
+        let quitItem = NSMenuItem(title: "Quit Sticky Notes", action: #selector(quit(_:)), keyEquivalent: "q")
+        quitItem.target = self
+        appMenu.addItem(quitItem)
+        let appMenuItem = NSMenuItem(title: "Sticky Notes", action: nil, keyEquivalent: "")
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(.separator())
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+
+        // A nil target routes editing commands to the focused text view or field editor.
+        let editMenuItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+        NSApp.mainMenu = mainMenu
     }
 
     private func configureStatusItem() {
